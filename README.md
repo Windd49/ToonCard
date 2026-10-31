@@ -152,6 +152,6 @@
 
 ## 授權與來源
 
-- 程式碼採 [MIT 授權](LICENSE)。部分圖示改自 Feather Icons，見 [第三方授權聲明](THIRD_PARTY_NOTICES.md)。
+- 程式碼採 [GNU AGPLv3 授權](LICENSE)。部分圖示改自 Feather Icons，見 [第三方授權聲明](THIRD_PARTY_NOTICES.md)。
 - 角色卡格式參考 SillyTavern，探索來源為 chub.ai；本專案與上述平台無隸屬或官方合作關係。
 - 第三方角色卡、圖片、音樂與世界書的權利屬於各自權利人；匯入或分享前，請確認作者的使用與轉載條件。
