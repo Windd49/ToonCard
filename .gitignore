@@ -1,0 +1,13 @@
+# 個人設定與金鑰：只留在自己的電腦，不要上傳
+config.local.json
+keys/*
+!keys/README.md
+private/
+
+# 系統與工具產生的檔案
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/

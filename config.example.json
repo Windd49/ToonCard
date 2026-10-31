@@ -1,0 +1,9 @@
+{
+  "server": { "port": 8787, "lan": false, "proxy": true, "proxyPrivate": true },
+  "vertex": { "keyFile": "", "project": "" },
+  "net": { "proxy": "auto" },
+  "llm": { "safety": "OFF" },
+  "image": { "safety": "OFF" },
+  "story": { "mature": false },
+  "chub": { "nsfw": false }
+}
