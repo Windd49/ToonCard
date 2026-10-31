@@ -6,6 +6,13 @@
 
 > **開發中**：功能與介面持續調整，可能遇到錯誤。目前僅以 Gemini API 與 Vertex AI 測試，其他服務的相容性仍待確認。
 
+## 你是不是也想要……
+
+- 用自己選的 AI 模型玩角色卡，花多少錢由自己決定？
+- 想自己架一套 AI 視覺小說，又不想花太多時間研究設定？
+- 玩到最後，最想留下來的其實是劇情裡那些畫面？
+- 把一路玩出來的故事和圖，分享給朋友一起看、一起玩？
+
 ## 示範影片
 
 [▶ 下載觀看：Fuka Shikuzaki（MP4，約 241 MiB）](https://github.com/Windd49/ToonCard/releases/download/demo-video/Fuka.Shikuzaki.mp4)
