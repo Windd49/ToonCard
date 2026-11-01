@@ -358,16 +358,17 @@
   /* ---------- 特殊場景圖與背景圖（各自一份清單：{ id, name, desc, prompt, blob }） ---------- */
   const LISTS = { cg: 'cgs', bg: 'bgs' };
   const entries = (card, type) => (card && card[LISTS[type]]) || [];
-  function findIn(card, type, name) {
+  function findIn(card, type, name, { fuzzy = true } = {}) {
     const list = entries(card, type).filter((g) => g.blob);
     const n = String(name || '').trim().toLowerCase();
     if (!n) return null;
-    return list.find((g) => String(g.id) === String(name).trim())
-      || list.find((g) => String(g.name || '').trim().toLowerCase() === n)
-      || list.find((g) => { const x = String(g.name || '').trim().toLowerCase(); return x && (x.includes(n) || n.includes(x)); })
-      || null;
+    const exact = list.find((g) => String(g.id) === String(name).trim())
+      || list.find((g) => String(g.name || '').trim().toLowerCase() === n);
+    if (exact || !fuzzy) return exact || null;
+    return list.find((g) => { const x = String(g.name || '').trim().toLowerCase(); return x && (x.includes(n) || n.includes(x)); }) || null;
   }
-  const findCg = (card, name) => findIn(card, 'cg', name);
+  // CG 只能由完整名稱或內部 ID 觸發，避免相似名稱誤顯示另一張圖；背景仍允許模糊配對。
+  const findCg = (card, name) => findIn(card, 'cg', name, { fuzzy: false });
   const findBg = (card, name) => findIn(card, 'bg', name);
   // 場景描述沒指定背景名時，挑名稱或說明字詞最接近的背景
   function matchBg(card, text) {

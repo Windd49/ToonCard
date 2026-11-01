@@ -75,14 +75,15 @@
     parsePath,
     pageUrl: (fullPath) => `https://chub.ai/characters/${fullPath}`,
 
-    async search({ q = '', page = 1, first = 24, sort, lang, topics = '' } = {}) {
+    async search({ q = '', page = 1, first = 24, sort, lang, topics = '', nsfw } = {}) {
       const st = TT.settings.chub;
+      const adult = nsfw == null ? !!st.nsfw : !!nsfw;
       const params = new URLSearchParams({
         search: q,
         first: String(first),
         page: String(page),
         sort: sort || st.sort || 'trending',
-        nsfw: String(!!st.nsfw),
+        nsfw: String(adult),
         nsfl: 'false',
         namespace: 'characters',
         ...SITE_FILTERS,
@@ -90,7 +91,7 @@
       const language = lang != null ? lang : st.lang;
       if (language) params.set('language', language);
       if (topics) params.set('topics', topics);
-      if (st.nsfw === false) params.set('excludetopics', 'NSFW');
+      if (!adult) params.set('excludetopics', 'NSFW');
       const j = await getJSON(`${API}/search?${params}`);
       const data = j.data || j;
       return { count: data.count || 0, nodes: (data.nodes || []).map(normalize) };

@@ -101,6 +101,12 @@
   }
 
   /* ---------- 後端 ---------- */
+  function selectedImageModel(st) {
+    const model = String(st.model || '').trim();
+    if (!model) throw new Error('尚未設定圖像模型名稱');
+    return model;
+  }
+
   async function fetchAsBlob(url) {
     if (url.startsWith('data:')) return TT.dataURLToBlob(url);
     try {
@@ -124,7 +130,7 @@
 
   async function genOpenAI(req, st, signal) {
     const base = TT.llm.normalizeBase(st.baseUrl || BACKENDS.openai.base);
-    const model = st.model || 'gpt-image-1';
+    const model = selectedImageModel(st);
     const headers = st.apiKey ? { Authorization: 'Bearer ' + st.apiKey.trim() } : {};
     let res;
     if (req.refs.length && /gpt-image|dall-e-2/i.test(model)) {
@@ -179,11 +185,11 @@
     const base = TT.llm.normalizeBase(st.baseUrl || TT.settings.llm.baseUrl);
     const key = st.apiKey || TT.settings.llm.apiKey;
     if (!base) throw new Error('尚未設定圖像 API 網址');
-    if (!st.model) throw new Error('尚未設定圖像模型名稱');
+    const model = selectedImageModel(st);
     const ratio = req.width > req.height ? 'landscape (3:2)' : req.width < req.height ? 'portrait (2:3)' : 'square (1:1)';
     const content = [{ type: 'text', text: `Generate one illustration. ${req.positive}\nAspect ratio: ${ratio}. No text, captions, or speech bubbles in the image.${req.refs.length ? '\nUse the attached image(s) only as reference for the characters\' appearance.' : ''}` }];
     for (const b of req.refs) content.push({ type: 'image_url', image_url: { url: await TT.blobToDataURL(b) } });
-    const body = { model: st.model, messages: [{ role: 'user', content }], stream: false };
+    const body = { model, messages: [{ role: 'user', content }], stream: false };
     if (/openrouter\.ai/.test(base)) body.modalities = ['image', 'text'];
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers.Authorization = 'Bearer ' + key.trim();
@@ -327,7 +333,7 @@
       ? { type: 'vertex', location: st.location || (llm.type === 'vertex' && llm.location) || 'global' }
       : { type: 'gemini', baseUrl: st.baseUrl || (llm.type === 'gemini' ? llm.baseUrl : ''), apiKey: String(st.apiKey || (llm.type === 'gemini' ? llm.apiKey : '') || '').trim() };
     if (cfg.type === 'gemini' && !cfg.apiKey) throw new Error('尚未設定 Gemini 金鑰（圖像金鑰留空時會沿用文字模型的 Gemini 金鑰）');
-    const model = st.model || 'gemini-nano-banana-2.1';
+    const model = selectedImageModel(st);
     const parts = [];
     for (const b of req.refs || []) parts.push({ inlineData: { mimeType: b.type || 'image/png', data: TT.bytesToB64(new Uint8Array(await b.arrayBuffer())) } });
     parts.push({ text: req.positive + (req.negative ? `\nAvoid: ${req.negative}` : '') });
@@ -396,7 +402,7 @@ ${prompt}`;
 
   // signal：停止生成時中斷請求（包含限流的重試等待）
   async function generate(req, { signal, report: rep } = {}) {
-    const st = TT.settings.image;
+    const st = { ...TT.settings.image };
     switch (st.backend) {
       case 'gemini':
       case 'vertex': return genGemini(req, st, signal, rep);
@@ -460,7 +466,7 @@ ${prompt}`;
   // 能附參考圖的服務才做得出長相一致的表情組
   const supportsRef = () => {
     const st = TT.settings.image;
-    return st.backend === 'gemini' || st.backend === 'vertex' || st.backend === 'chat' || (st.backend === 'openai' && /gpt-image|dall-e-2/i.test(st.model || 'gpt-image-1'));
+    return st.backend === 'gemini' || st.backend === 'vertex' || st.backend === 'chat' || (st.backend === 'openai' && /gpt-image|dall-e-2/i.test(st.model || ''));
   };
   const exprEnabled = () => enabled() && TT.settings.image.expressions !== false && supportsRef();
   const isCharOf = (card, name) => name === card.name || name === card.nickname;
@@ -472,7 +478,7 @@ ${prompt}`;
   function portraitRequest(card, tags) {
     const st = TT.settings.image;
     const [width, height] = dims({ ...st, aspect: 'portrait', size: '' });
-    const transparent = st.backend === 'openai' && /gpt-image/i.test(st.model || 'gpt-image-1');
+    const transparent = st.backend === 'openai' && /gpt-image/i.test(st.model || '');
     const style = styleText(card).replace(/,?\s*(detailed background|dramatic lighting|volumetric lighting)/gi, '');
     return {
       positive: [style, tags, 'solo, upper body portrait, facing viewer, standing, centered', transparent ? 'transparent background' : 'solid flat bright green background, green screen, chroma key'].filter(Boolean).join(', '),
