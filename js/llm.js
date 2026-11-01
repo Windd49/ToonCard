@@ -410,7 +410,17 @@
 
   /* ---------- 對外介面 ---------- */
   async function chat(opts) {
-    const cfg = { ...TT.settings.llm, ...(opts.cfg || {}) };
+    const selected = TT.settings.llm;
+    // 個別功能可以調整思考程度等生成參數，但不得換掉使用者在設定中選定的文字服務或模型。
+    const cfg = {
+      ...selected,
+      ...(opts.cfg || {}),
+      type: selected.type,
+      baseUrl: selected.baseUrl,
+      apiKey: selected.apiKey,
+      model: selected.model,
+      location: selected.location,
+    };
     if (!cfg.model) throw new Error('尚未設定模型名稱');
     const o = { stream: cfg.stream !== false, maxTokens: +cfg.maxTokens || 2048, ...opts };
     if (cfg.type === 'anthropic') return chatAnthropic(cfg, o);
