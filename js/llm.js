@@ -410,10 +410,7 @@
 
   /* ---------- 對外介面 ---------- */
   async function chat(opts) {
-    const selected = TT.settings.llm;
-    // 所有劇情、摘要、整理、構想與提示詞輔助一律使用「設定 → 文字模型」目前選定的連線與模型。
-    // 個別工作只可覆寫思考程度等生成參數，不能暗中換服務或模型。
-    const cfg = { ...selected, ...(opts.cfg || {}), type: selected.type, baseUrl: selected.baseUrl, apiKey: selected.apiKey, model: selected.model, location: selected.location };
+    const cfg = { ...TT.settings.llm, ...(opts.cfg || {}) };
     if (!cfg.model) throw new Error('尚未設定模型名稱');
     const o = { stream: cfg.stream !== false, maxTokens: +cfg.maxTokens || 2048, ...opts };
     if (cfg.type === 'anthropic') return chatAnthropic(cfg, o);

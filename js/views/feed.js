@@ -9,7 +9,7 @@
 
   // 模組層級狀態：切換分頁回來時保留列表與捲動位置
   // groups：同一本書的鍵 → items 裡的位置；seen：看過的所有卡（包含收進其他版本、沒有顯示的）
-  const S = { key: '', epoch: 0, items: [], page: 0, count: 0, done: false, loading: false, error: '', scroll: 0, groups: new Map(), seen: new Set() };
+  const S = { key: '', items: [], page: 0, count: 0, done: false, loading: false, error: '', scroll: 0, groups: new Map(), seen: new Set() };
 
   // 同名的書：同一個作者重複上傳（作者更新時常另外上傳一張）只顯示最新的一本；別人轉載、內容一樣（token 數相同）的也收在一起，
   // 不同作者、內容不同的同名卡（例如好幾個不同的「Yui」）照樣分開。其他版本在作品頁的「其他版本」
@@ -70,8 +70,6 @@
       F.list = el.querySelector('.feed-list');
       F.foot = el.querySelector('.feed-foot');
       F.scroller = el.querySelector('.feed-scroll');
-      // reload/remount 會重用同一個容器；先移除舊監聽，避免每套用一次篩選就多觸發一次。
-      el.removeEventListener('click', F.onClick);
       el.addEventListener('click', F.onClick);
       F.observe();
       if (S.key === key && S.items.length) {
@@ -79,7 +77,7 @@
         F.renderFoot();
         requestAnimationFrame(() => (F.scroller.scrollTop = S.scroll));
       } else {
-        Object.assign(S, { key, epoch: S.epoch + 1, items: [], page: 0, count: 0, done: false, loading: false, error: '', scroll: 0, groups: new Map(), seen: new Set() });
+        Object.assign(S, { key, items: [], page: 0, count: 0, done: false, error: '', scroll: 0, groups: new Map(), seen: new Set() });
         F.renderFoot();
         F.loadMore();
       }
@@ -114,15 +112,12 @@
 
     async loadMore() {
       if (S.loading || S.done || !F.el) return;
-      const epoch = S.epoch;
       S.loading = true;
       S.error = '';
       F.renderFoot();
       const st = TT.settings.chub;
-      const query = { q: st.q || '', page: S.page + 1, sort: st.sort, lang: st.lang, nsfw: !!st.nsfw };
       try {
-        const r = await TT.chub.search(query);
-        if (epoch !== S.epoch) return;
+        const r = await TT.chub.search({ q: st.q || '', page: S.page + 1 });
         const start = S.items.length;
         const changed = addNodes(r.nodes);
         S.page++;
@@ -133,9 +128,8 @@
           changed.filter((i) => i < start).forEach(F.renderOne);
         }
       } catch (e) {
-        if (epoch === S.epoch) S.error = TT.llm.describeError(e);
+        S.error = TT.llm.describeError(e);
       }
-      if (epoch !== S.epoch) return;
       S.loading = false;
       if (F.el) F.renderFoot();
     },

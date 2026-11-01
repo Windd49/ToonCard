@@ -45,8 +45,6 @@
     },
 
     render() {
-      const oldScroller = D.el.querySelector('.detail-scroll');
-      const oldScrollTop = oldScroller ? oldScroller.scrollTop : 0;
       const c = D.card;
       const gs = TT.engine.greetings(c);
       const persona = TT.store.getPersona(D.personaId) || TT.store.defaultPersona();
@@ -68,13 +66,13 @@
       const rules = TT.authorNotes.summary(c);
 
       D.el.innerHTML = String(html`<div class="view detail">
-        <button class="icon-btn glass detail-back" data-act="back" aria-label="返回">${icon('back', 22)}</button>
         <div class="detail-scroll">
           <div class="hero">
             <div class="hero-bg" data-bg-media="card:${c.id}"></div>
             <img class="hero-img" data-media="card:${c.id}" alt="">
             <div class="hero-shade"></div>
             <div class="hero-top">
+              <button class="icon-btn glass" data-act="back" aria-label="返回">${icon('back', 22)}</button>
               <div class="spacer"></div>
               <button class="icon-btn glass ${shelved ? 'on' : ''}" data-act="shelf" title="${shelved ? '已在書架（點一下移出）' : '加入書架'}">${icon(shelved ? 'bookmarkFill' : 'bookmark', 22)}</button>
               <button class="icon-btn glass ${c.favorite ? 'on' : ''}" data-act="fav" aria-label="收藏">${icon(c.favorite ? 'heartFill' : 'heart', 22)}</button>
@@ -203,8 +201,6 @@
         </div>
       </div>`);
       TT.media.hydrate(D.el);
-      const scroller = D.el.querySelector('.detail-scroll');
-      if (scroller && oldScrollTop > 0) requestAnimationFrame(() => { if (D.el && scroller.isConnected) scroller.scrollTop = oldScrollTop; });
     },
 
     async onClick(e) {

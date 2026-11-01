@@ -656,14 +656,11 @@
     // 特殊場景圖：最近的 [CG:名稱] 一直顯示到 [CG:off] 或換場景，置中蓋過立繪
     updateCg(i) {
       let hit = null;
-      // 同一個分鏡裡即使模型把 [CG] 寫在 [SCENE] 前面，也視為該分鏡的 CG；
-      // 只有往前一格仍找不到 CG 時，場景切換才會終止舊 CG。
-      for (let k = Math.min(i, V.th.steps.length - 1); k >= 0 && !hit; k--) {
-        const step = V.th.steps[k];
-        const effects = [...step.pre, ...step.post];
-        for (let j = effects.length - 1; j >= 0; j--) if (effects[j].b.t === 'cg') { hit = effects[j]; break; }
-        if (!hit && effects.some((f) => f.b.t === 'scene')) break;
-      }
+      if (i >= 0) V.eachFxBack(i, (f) => {
+        if (f.b.t !== 'cg' && f.b.t !== 'scene') return false;
+        hit = f;
+        return true;
+      });
       const card = V.ctx.card;
       const cg = hit && hit.b.t === 'cg' && hit.b.name ? TT.sprites.findCg(card, hit.b.name) : null;
       const key = cg ? cg.id : '';
