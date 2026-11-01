@@ -1028,6 +1028,9 @@ body[data-route="editor"] .task-tray, body[data-route="assets"] .task-tray { bot
 .b-say.right .bubble .who { color: rgba(255, 255, 255, 0.8); text-align: right; }
 .bubble .who em { font-style: normal; font-weight: 400; margin-left: 6px; opacity: 0.8; }
 .bubble .txt { font-size: 15.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.beat-cg { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; padding: 3px 7px; border-radius: 999px; background: rgba(70, 55, 110, 0.12); color: inherit; font-size: 10.5px; line-height: 1.3; opacity: 0.55; }
+.beat-cg:hover, .beat-cg:focus-visible { opacity: 1; background: rgba(155, 123, 255, 0.22); }
+.b-narr .beat-cg { margin-left: 8px; float: right; }
 .b-think .bubble { background: #ece9ff; color: #2b2550; border: 2px dashed #b7adff; border-radius: 22px; font-style: italic; }
 .b-think.right .bubble { background: #ffe6ef; border-color: #ffa9c4; color: #4a1f30; }
 .b-sfx { margin: 10px 0; text-align: center; }

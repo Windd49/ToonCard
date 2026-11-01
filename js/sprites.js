@@ -362,7 +362,8 @@
     const list = entries(card, type).filter((g) => g.blob);
     const n = String(name || '').trim().toLowerCase();
     if (!n) return null;
-    return list.find((g) => String(g.name || '').trim().toLowerCase() === n)
+    return list.find((g) => String(g.id) === String(name).trim())
+      || list.find((g) => String(g.name || '').trim().toLowerCase() === n)
       || list.find((g) => { const x = String(g.name || '').trim().toLowerCase(); return x && (x.includes(n) || n.includes(x)); })
       || null;
   }
@@ -656,7 +657,7 @@ ${TT.cast.cardText(card)}`;
               msg.textContent = '已改寫成含蓄的畫法，可以再修改後按「開始生成」';
             } else {
               const d = kind === 'story'
-                ? await TT.engine.describeForImage(o.ctx, { type: o.type, who: o.who || '' })
+                ? await TT.engine.describeForImage(o.ctx, { type: o.type, who: o.who || '', at: o.at || null })
                 : await TT.engine.conceive({ type: o.type, card: o.card, persona: o.persona, name: field('name').value.trim(), who: o.who || '', desc: field('desc').value.trim() });
               if (o.nameEditable && d.name && (kind === 'story' || !field('name').value.trim())) field('name').value = String(d.name).slice(0, 16);
               if (d.desc) field('desc').value = d.desc;

@@ -155,6 +155,7 @@
                   <button class="st-icon st-auto" data-act="auto" title="自動播放">AUTO</button>
                   <button class="st-icon st-bgm" data-act="bgm" title="配樂（開／關）">${icon('music', 20)}</button>
                   <button class="st-icon" data-act="tts" title="朗讀" ${TT.tts.supported ? '' : 'hidden'}>${icon('volume', 21)}</button>
+                  <button class="st-icon" data-act="framecg" title="只依目前這一個分鏡生成特殊場景圖">${icon('image', 20)}</button>
                   <button class="st-icon" data-act="hideui" title="隱藏介面">${icon('eyeOff', 21)}</button>
                   <button class="st-icon" data-act="log" title="劇情回顧">${icon('clock', 21)}</button>
                   <button class="st-icon" data-act="menu" title="選單（Esc）">${icon('gear', 21)}</button>
@@ -1128,6 +1129,7 @@
       const key = `${m.id}|${m.sw || 0}|${bi}`;
       const right = m.role === 'user' || b.name === ctx.persona.name;
       const beats = (cur(m) || {}).beats || [];
+      const frameCg = m.role === 'assistant' ? html`<button class="beat-cg" data-act="framecg" data-frame="${key}" title="只依這一個分鏡生成特殊場景圖">${icon('image', 12)} 生成這一幕 CG</button>` : '';
       switch (b.t) {
         case 'scene': {
           // 場景後面緊接著 [BG:名稱]、[SCENE:名稱] 或描述對得上作品背景時，分鏡格直接用那張背景
@@ -1141,10 +1143,10 @@
           const g = !(prev && prev.t === 'scene') && TT.sprites.findBg(ctx.card, b.name);
           return g ? String(html`<figure class="panel has-img bg-panel"><img data-media="bg:${ctx.card.id}|${g.id}" alt="${g.name}"><figcaption>場景・${g.name}</figcaption></figure>`) : '';
         }
-        case 'narr': return String(html`<div class="b-narr ${b.action ? 'action' : ''} ${m.role === 'user' ? 'by-user' : ''}">${raw(TT.mdLite(b.text))}</div>`);
+        case 'narr': return String(html`<div class="b-narr ${b.action ? 'action' : ''} ${m.role === 'user' ? 'by-user' : ''}" data-frame="${key}">${raw(TT.mdLite(b.text))}${frameCg}</div>`);
         case 'say':
         case 'think':
-          return String(html`<div class="b-${b.t} ${right ? 'right' : 'left'}">${TT.ui.speakerAvatar(b.name, ctx, 38)}<div class="bubble"><div class="who" style="--nc:${TT.hashColor(b.name, 70, 70)}">${b.name}${b.t === 'think' ? '（心聲）' : ''}${b.emo ? html`<em>${b.emo}</em>` : ''}</div><div class="txt">${raw(TT.mdLite(b.text))}</div></div></div>`);
+          return String(html`<div class="b-${b.t} ${right ? 'right' : 'left'}" data-frame="${key}">${TT.ui.speakerAvatar(b.name, ctx, 38)}<div class="bubble"><div class="who" style="--nc:${TT.hashColor(b.name, 70, 70)}">${b.name}${b.t === 'think' ? '（心聲）' : ''}${b.emo ? html`<em>${b.emo}</em>` : ''}</div><div class="txt">${raw(TT.mdLite(b.text))}</div>${frameCg}</div></div>`);
         case 'sfx': return String(html`<div class="b-sfx"><button data-act="sfxplay" data-sfx-name="${b.name || ''}" data-sfx-text="${b.text}" title="播放音效">${icon('volume', 12)} ${b.text}</button></div>`);
         case 'bgm': return String(html`<div class="b-bgm">${icon('music', 12)} ${b.name ? `配樂・${b.name}` : '配樂停止'}</div>`);
         case 'stat': {
@@ -1688,6 +1690,18 @@
           const [mid, swi, bi] = a.closest('[data-beat]').dataset.beat.split('|');
           return TT.engine.regenerateImage(ctx, mid, +swi, +bi);
         }
+        case 'framecg': {
+          let at;
+          if (a.dataset.frame) {
+            const [mid, swi, bi] = a.dataset.frame.split('|');
+            at = { mid, swi: +swi, bi: +bi };
+          } else {
+            const step = V.th.steps[V.th.pos];
+            if (step) at = { mid: step.mid, swi: step.swi, bi: step.bi };
+          }
+          if (!at) return TT.toast('目前沒有可生成的分鏡', { type: 'error' });
+          return V.storyImage({ back: true, forceType: 'cg', frameAt: at });
+        }
         case 'viewimg': return V.viewImage(a.closest('[data-beat]').dataset.beat);
         case 'bgretry': {
           if (!a.dataset.job) return;
@@ -1946,15 +1960,20 @@
 
     // 依目前劇情生成：這個角色的新表情或動作、這一刻的特殊場景圖、這個地點的背景。
     // 說明由 AI 依最近的劇情撰寫，參考目前的立繪或背景改寫；畫好可以直接套用到目前這一句
-    async storyImage({ back = false } = {}) {
+    async storyImage({ back = false, forceType = '', frameAt = null } = {}) {
       const ctx = V.ctx;
       const { card, persona } = ctx;
       if (!TT.img.enabled()) { TT.toast('請先在「設定 → 圖像生成」選擇生成服務', { type: 'error' }); return null; }
-      const st = V.th.steps[V.th.pos];
+      if (V.mode !== 'theater') V.rebuildSteps();
+      const st = frameAt
+        ? V.th.steps.find((step) => step.mid === frameAt.mid && step.swi === frameAt.swi && step.bi === frameAt.bi)
+        : V.th.steps[V.th.pos] || V.th.steps[V.th.steps.length - 1];
+      if (!st) { TT.toast('這段劇情沒有可用畫面', { type: 'error' }); return null; }
+      const stepIndex = V.th.steps.indexOf(st);
       const speaker = st && (st.role === 'user' ? persona.name : st.b.t === 'say' || st.b.t === 'think' ? V.canon(st.b.name) : '');
-      const state = V.stageState(V.th.pos);
+      const state = V.stageState(stepIndex);
       const who = speaker || state.focus || (card.nickname || card.name);
-      const v = await TT.choose('依目前劇情生成圖片', [
+      const v = forceType || await TT.choose('依目前劇情生成圖片', [
         { label: `${who} 此刻的表情或動作（新的立繪種類）`, value: 'sprite', icon: 'user' },
         { label: '這一刻的特殊場景圖', value: 'cg', icon: 'image' },
         { label: '目前地點的背景', value: 'bg', icon: 'layers' },
@@ -1971,6 +1990,7 @@
       const r = await TT.sprites.genForm({
         type: v, title: v === 'sprite' ? `${name}・依劇情生成` : v === 'cg' ? '依劇情生成特殊場景圖' : '依劇情生成背景',
         name: '', nameEditable: true, refs: choices, selected: pref.filter(Boolean), ctx, card, persona, who: v === 'bg' ? '' : name,
+        at: frameAt ? { ...frameAt, singleBeat: true } : null,
         apply: v === 'sprite' ? '畫好後讓目前這句換成這張立繪' : v === 'cg' ? '畫好後從目前這句開始顯示' : '畫好後從目前這句開始換成這個背景',
         autoStory: true,
       });
@@ -1980,6 +2000,7 @@
         const r2 = await TT.sprites.genForm({
           type: v, title: `重試・${r.name}`, name: r.name, nameEditable: v !== 'sprite', desc: r.desc, prompt: r.prompt,
           refs: TT.sprites.refChoices(card, persona), selected: r.refs.map((x) => x.id), ctx: V.ctx === ctx ? ctx : null, card, persona,
+          at: frameAt ? { ...frameAt, singleBeat: true } : null,
           who: v === 'bg' ? '' : name, notice: rep && rep.error, reason: rep && rep.reason,
         });
         if (!r2) return;
@@ -1996,12 +2017,12 @@
       TT.toast('已加入生成佇列，可以在選單「生成工作」暫停或停止');
       if (!r.apply) return 'queued';
       const at = st && { b: st.b, mid: st.mid };
-      job.promise.then((out) => { if (out && out.ok && V.ctx === ctx && at) V.applyGenerated(v, r.name, who, at); });
+      job.promise.then((out) => { if (out && out.ok && V.ctx === ctx && at) V.applyGenerated(v, r.name, who, at, out.result && out.result.id); });
       return 'queued';
     },
 
     // 把依劇情畫好的圖套用到當時那一句：立繪換成新的種類；特殊場景圖、背景從那一句開始顯示
-    async applyGenerated(type, name, who, at) {
+    async applyGenerated(type, name, who, at, assetId = '') {
       const s = V.ctx.session;
       const m = s.messages.find((x) => x.id === at.mid);
       const sw = m && cur(m);
@@ -2018,7 +2039,7 @@
           if (n === who) { x.b.emo = name; break; }
         }
         if (k < 0) return TT.toast(`「${who}」在這之前還沒說過話，新立繪會在 AI 用到「${name}」時出現`);
-      } else sw.beats.splice(i, 0, { t: type, name });
+      } else sw.beats.splice(i, 0, { t: type, name: assetId || name });
       await TT.store.saveSession(s, true);
       V.th.cur = { b: at.b, mid: at.mid };
       V.refreshSprites();

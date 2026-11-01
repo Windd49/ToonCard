@@ -17,6 +17,26 @@
   const routeName = (path) => { const p = String(path || '/').split('?')[0]; const r = ROUTES.find(([re]) => re.test(p)); return r ? r[1] : ''; };
   const curPath = () => (location.hash || '#/').slice(1) || '/';
 
+  // 副本功能已移除：清掉舊版留下的副本定義、執行存檔與專用複製資料，避免它們混進一般書架。
+  async function removeLegacyDungeons() {
+    const sessions = await TT.store.allSessions();
+    const legacySessions = sessions.filter((s) => s && s.dungeon);
+    const legacyCards = TT.store.cards.filter((c) => c && c.dungeonRuntime);
+    const legacyCardIds = new Set(legacyCards.map((c) => c.id));
+    const personaIds = new Set(legacySessions.map((s) => s.personaId).filter(Boolean));
+
+    for (const card of legacyCards) await TT.store.deleteCard(card.id);
+    for (const session of legacySessions) if (!legacyCardIds.has(session.cardId)) await TT.store.deleteSession(session.id);
+    await TT.db.del('kv', 'tooncard-dungeons');
+
+    if (personaIds.size) {
+      const used = new Set((await TT.store.allSessions()).map((s) => s.personaId).filter(Boolean));
+      for (const id of personaIds) {
+        if (!used.has(id) && id !== TT.settings.ui.defaultPersona && TT.store.getPersona(id)) await TT.store.deletePersona(id);
+      }
+    }
+  }
+
   let current = null;
   // 每一筆瀏覽紀錄蓋上序號（history.state.ttIdx），分得出「回上一頁」和「新開一頁」，
   // 返回鍵才能回到真正的上一步（例如從遊玩畫面打開設定，返回就回到遊玩畫面）
@@ -142,6 +162,7 @@
   async function boot() {
     try {
       await TT.store.init();
+      await removeLegacyDungeons().catch((e) => console.warn('清理舊副本資料失敗', e));
       await TT.store.gc().catch((e) => console.warn('清理暫存故事失敗', e));
       await TT.sfx.load().catch((e) => console.warn('音效庫讀取失敗', e));
       await TT.bgm.load().catch((e) => console.warn('配樂庫讀取失敗', e));

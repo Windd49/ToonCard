@@ -499,11 +499,22 @@ ${card ? TT.truncate(TT.cast.cardText(card), 6000) : ''}`;
     },
 
     // 依目前劇情替一張圖寫說明（立繪的新表情或動作、特殊場景圖、背景圖），回傳 { name, desc, prompt }
-    async describeForImage(ctx, { type, who = '', hint = '' }) {
+    async describeForImage(ctx, { type, who = '', hint = '', at = null }) {
       const { session, card, persona } = ctx;
-      const recent = session.messages.slice(-4)
-        .map((m) => (m.role === 'user' ? (m.hidden ? '' : `${persona.name}：${cur(m).raw}`) : TT.parser.beatsToProse(cur(m).beats)))
-        .filter(Boolean).join('\n').slice(-3500);
+      let recent;
+      if (at && at.singleBeat) {
+        const message = session.messages.find((m) => m.id === at.mid);
+        const swipe = message && message.swipes[Number.isInteger(at.swi) ? at.swi : (message.sw || 0)];
+        if (!swipe || !Number.isInteger(at.bi) || at.bi < 0 || at.bi >= (swipe.beats || []).length) throw new Error('選擇的分鏡已不存在');
+        const beat = swipe.beats[at.bi];
+        let scene = null;
+        for (let i = at.bi; i >= 0; i--) if (swipe.beats[i].t === 'scene') { scene = swipe.beats[i]; break; }
+        recent = TT.parser.beatsToProse(scene && scene !== beat ? [scene, beat] : [beat], { withScene: true });
+      } else {
+        recent = session.messages.slice(-4)
+          .map((m) => (m.role === 'user' ? (m.hidden ? '' : `${persona.name}：${cur(m).raw}`) : TT.parser.beatsToProse(cur(m).beats)))
+          .filter(Boolean).join('\n').slice(-3500);
+      }
       const entry = TT.cast.find(card, who);
       const look = (entry && entry.appearance) || (who && (who === card.name || who === card.nickname) ? card.appearance : '') || (persona && who === persona.name ? persona.appearance : '');
       const what = {
@@ -514,7 +525,7 @@ ${card ? TT.truncate(TT.cast.cardText(card), 6000) : ''}`;
       const prompt = `根據下面的劇情，替一張圖寫說明。要畫的是：${what}。
 ${who ? `角色：${who}${entry && entry.role ? `（${entry.role}）` : ''}${look ? `，外貌：${look}` : ''}\n` : ''}${hint ? `補充要求：${hint}\n` : ''}只輸出 JSON：{"name":"4～8 個字的中文名稱","desc":"一句中文說明","prompt":"English image prompt, comma separated, describing only what to draw"}
 
-【最近的劇情】
+【${at && at.singleBeat ? '指定的單一分鏡' : '最近的劇情'}】
 ${recent}`;
       const out = await TT.llm.complete([{ role: 'user', content: prompt }], { maxTokens: 4000, json: true, cfg: { thinking: 'low' } });
       const j = TT.cast.parseJson(out, '{');
